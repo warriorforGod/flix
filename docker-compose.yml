@@ -1,4 +1,235 @@
-blackhole:
+services:
+  autoscan:
+    container_name: autoscan
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    ports:
+      - 3030/tcp
+    hostname: autoscan
+    image: saltydk/autoscan:latest
+    restart: unless-stopped
+    volumes:
+      - /mnt:/mnt
+      - $DOCKER_BASE/autoscan:/config
+    depends_on:
+      - rclone
+      - plex
+      - radarr
+      - sonarr
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.30
+
+  petio:
+    command:
+      - node
+      - petio.js
+    container_name: petio
+    ports:
+        - 7777/tcp
+    hostname: petio
+    image: ghcr.io/petio-team/petio:latest
+    restart: unless-stopped
+    user: $PUID:PGID
+    environment:
+    - TZ=$TZ          
+    volumes:
+        - /mnt:/mnt
+        - $DOCKER_BASE/petio/config:/app/api/config
+        - $DOCKER_BASE/petio/logs:/app/logs
+    working_dir: /app
+    depends_on:
+    - radarr
+    - sonarr
+    - lidarr
+    - mongo
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.19
+  
+  mongo:
+    command:
+    - mongod
+    container_name: mongo
+    ports:
+      - 27017/tcp
+    hostname: mongo
+    image: mongo:4.4
+    restart: unless-stopped
+    environment:
+    - TZ=$TZ
+    user: $PUID:$PGID
+    volumes:
+        - /mnt:/mnt
+        - $DOCKER_BASE/mongo/db:/data/db
+        - $DOCKER_BASE/mongo/config:/data/configdb
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.11
+  
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    hostname: jellyfin
+    volumes:
+      - /mnt:/mnt
+      - $DOCKER_BASE/jellyfin/config:/config
+      - $DOCKER_BASE/jellyfin/cache:/cache
+      - type: bind
+        source: /mnt/data/media/movies
+        target: /movies
+      - type: bind
+        source: /mnt/data/media/tv
+        target: /tv
+        read_only: true
+    restart: 'unless-stopped'
+    # Optional - alternative address used for autodiscovery
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://jellyfin.ouremail.name
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    # Optional - may be necessary for docker healthcheck to pass if running in host network mode
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.12
+
+  plex:
+    container_name: plex
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      - PLEX_UID=1024
+      - PLEX_GID=100
+      - TZ=$TZ
+      - VERSION=docker
+      - PLEX_CLAIM=claim-hsxMVALxW-R1YGwFUS5o
+    ports:
+      - 32400/tcp
+    hostname: plex
+    image: lscr.io/linuxserver/plex:latest
+    restart: unless-stopped
+    volumes:
+      - /mnt:/mnt
+      - /dev/shm:/dev/shm
+      - /mnt/local/transcodes/plex:/transcode
+      - $DOCKERBASE/plex/config:/config
+      - /opt/scripts:/scripts
+    depends_on:
+      - rclone
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.13
+  
+  prowlarr:
+    container_name: prowlarr
+    environment:
+      - PUID=$PGID
+      - PGID=$PUID
+      - TZ=$TZ
+    ports:
+      - 9696/tcp
+    hostname: prowlarr
+    image: lscr.io/linuxserver/prowlarr:latest
+    restart: unless-stopped
+    volumes:
+      - /mnt:/mnt
+      - $DOCKER_BASE/prowlarr/config:/config
+      - $DOCKER_BASE/prowlarr/config/Definitions/Custom:/Custom
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.7
+
+  radarr:
+    container_name: radarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    ports:
+      - 7878/TCP
+    hostname: radarr
+    image: ghcr.io/hotio/radarr:latest
+    restart: unless-stopped
+    volumes:
+      - /mnt:/mnt
+      - $DOCKER_BASE/radarr:/config
+      - /opt/scripts:/scripts
+      - /usr/bin/rclone:/usr/bin/rclone
+    depends_on:
+      - rclone
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.5
+
+  sonarr:
+    container_name: sonarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    image: ghcr.io/hotio/sonarr:latest
+    restart: unless-stopped
+    ports:
+      - 8989/TCP
+    volumes:
+      - /mnt:/mnt
+      - $DOCKER_BASE/sonarr:/config
+      - /opt/scripts:/scripts
+      - /usr/bin/rclone:/usr/bin/rclone
+    depends_on:
+      - rclone
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.4
+
+  bazarr:
+    container_name: bazarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    image: ghcr.io/hotio/bazarr:latest
+    restart: unless-stopped
+    ports:
+      - 6767/TCP
+    volumes:
+      - /mnt:/mnt
+      - $DOCKER_BASE/bazarr:/config
+      - /opt/scripts:/scripts
+      - /usr/bin/rclone:/usr/bin/rclone
+    depends_on:
+      - rclone
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.3
+
+  lidarr:
+    container_name: lidarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    image: lscr.io/linuxserver/lidarr:latest
+    restart: unless-stopped
+    ports:
+      - 8686/TCP
+    volumes:
+      - /mnt:/mnt
+      - $DOCKER_BASE/lidarr/config:/config
+      - /opt/scripts:/scripts
+      - /usr/bin/rclone:/usr/bin/rclone
+    depends_on:
+      - rclone
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.6
+  
+  blackhole:
     image: ghcr.io/westsurname/scripts/blackhole:latest
     container_name: blackhole
     user: $PUID:$PGID
@@ -17,3 +248,10 @@ blackhole:
     #profiles: [blackhole, blackhole_all, all]
     depends_on:
       - rclone
+    networks:
+      customnet:
+        ipv4_address: 172.27.0.17
+
+networks:
+  customnet:
+    external: true
