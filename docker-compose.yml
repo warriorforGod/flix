@@ -1,4 +1,4 @@
-services:
+ services:
   autoscan:
     container_name: autoscan
     environment:
@@ -107,7 +107,7 @@ services:
       - PLEX_GID=100
       - TZ=$TZ
       - VERSION=docker
-      - PLEX_CLAIM=claim-hsxMVALxW-R1YGwFUS5o
+      - PLEX_CLAIM=<claim>
     ports:
       - 32400/tcp
     hostname: plex
