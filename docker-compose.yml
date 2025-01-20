@@ -1,0 +1,19 @@
+blackhole:
+    image: ghcr.io/westsurname/scripts/blackhole:latest
+    container_name: blackhole
+    user: $PUID:$PGID
+    volumes:
+      - ${REALDEBRID_MOUNT_TORRENTS_PATH:-/dev/null}:${REALDEBRID_MOUNT_TORRENTS_PATH:-/dev/null}
+      - ${TORBOX_MOUNT_TORRENTS_PATH:-/dev/null}:${TORBOX_MOUNT_TORRENTS_PATH:-/dev/null}
+      - ${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_SONARR_PATH}:/${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_SONARR_PATH}
+      - ${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_RADARR_PATH}:/${BLACKHOLE_BASE_WATCH_PATH}/${BLACKHOLE_RADARR_PATH}
+      - /$DOCKERBASE/blackhole/logs:/app/logs
+      - /mnt:/mnt
+    env_file:
+      - $DOCKER_BASE/blackhole/.env
+    environment:
+      - BLACKHOLE_BASE_WATCH_PATH=/${BLACKHOLE_BASE_WATCH_PATH}
+    restart: unless-stopped
+    #profiles: [blackhole, blackhole_all, all]
+    depends_on:
+      - rclone
